@@ -1,104 +1,121 @@
 import math
 from sys import argv
-import re
 
 
-class Complex:
+class EquationError(Exception):
 
-    def __init__(self, r, i):
-        self.r = r
-        self.i = i
+    error = "Error"
+
+    def __init__(self, err_msg):
+        self.error = err_msg
 
     def __str__(self):
-        s = str(self.r)
-        if self.i < 0:
-            s += " - " + str(-self.i) + " * i"
-        else:
-            s += " + " + str(self.i) + " * i"
-        return s
+        return self.error
+
+    def __repr__(self):
+        return self.error
 
 
 class Equation:
 
     def __init__(self, tokens):
-        self.x2 = 0
-        self.x1 = 0
-        self.x0 = 0
         self.degree = 0
         self.discriminant = 0
         self.num_roots = 0
         self.is_complex = False
         self.answer = list()
+        self.degrees = {0:0, 1:0, 2:0}
         self.extract_x(tokens)
 
     def extract_x(self, equation: list):
         for token in equation:
             token: str
-            degree = int(token.split('^')[1])
+            spl = token.split('^')
+            degree = 1 if len(spl) == 1 else int(token.split('^')[1])
             q_str = token.split('*')[0]
             if '.' in q_str:
                 q = float(q_str)
             else:
                 q = int(q_str)
-            if degree == 2:
-                self.x2 += q
-            elif degree == 1:
-                self.x1 += q
-            elif degree == 0:
-                self.x0 += q
-            self.degree = max(self.degree, degree)
+            if degree not in self.degrees.keys():
+                self.degrees[degree] = q
+            else:
+                self.degrees[degree] += q
+            self.degree = max_degree(self.degrees)
 
     def solve(self):
-        if self.degree == 2:
-            self.discriminant = self.x1 * self.x1 - 4 * self.x2 * self.x0
+        if solution_is_all(self.degrees):
+            raise EquationError("Solution is all numbers")
+        elif self.degree > 2:
+            raise EquationError("Degree higher than 2")
+        elif self.degree == 2:
+            q2 = self.degrees[2]
+            q1 = self.degrees[1]
+            q0 = self.degrees[0]
+            self.discriminant = q1 * q1 - 4 * q2 * q0
             if self.discriminant < 0:
                 self.is_complex = True
                 self.num_roots = 2
-                root1_i = math.sqrt(-self.discriminant) / (2 * self.x2)
+                root1_i = math.sqrt(-self.discriminant) / (2 * q2)
                 root2_i = -root1_i
-                root_r = -self.x1 / (2 * self.x2)
-                self.answer.append(Complex(root_r, root2_i))
-                self.answer.append(Complex(root_r, root1_i))
+                root_r = -q1 / (2 * q2)
+                self.answer.append(complex(root_r, root2_i))
+                self.answer.append(complex(root_r, root1_i))
             elif self.discriminant == 0:
                 self.num_roots = 1
-                root = -self.x1 / (2 * self.x2)
+                root = -q1 / (2 * q2)
                 self.answer.append(root)
             else:
                 self.num_roots = 2
-                root1 = (-self.x1 + math.sqrt(self.discriminant)) / (2 * self.x2)
-                root2 = (-self.x1 - math.sqrt(self.discriminant)) / (2 * self.x2)
+                root1 = (-q1 + math.sqrt(self.discriminant)) / (2 * q2)
+                root2 = (-q1 - math.sqrt(self.discriminant)) / (2 * q2)
                 self.answer.append(root1)
                 self.answer.append(root2)
         elif self.degree == 1:
+            q1 = self.degrees[1]
+            q0 = self.degrees[0]
             self.num_roots = 1
-            self.answer.append(-self.x0 / self.x1)
+            self.answer.append(-q0 / q1)
         else:
-            pass  # error No solution or Degree higher
+            raise EquationError("No solution")
 
     def __str__(self):
         s = ""
-        if self.x2 != 0:
-            s = str(self.x2) + " * x^2"
-            if self.x1 > 0:
-                s = s + " + " + str(self.x1) + " * x^1"
-            elif self.x1 < 0:
-                s = s + " - " + str(-self.x1) + " * x^1"
-        else:
-            s = str(self.x1) + " * x^1"
-        if self.x0 > 0:
-            s = s + " + " + str(self.x0) + " * x^0"
-        elif self.x0 < 0:
-            s = s + " - " + str(-self.x0) + " * x^0"
+        ks = list(self.degrees.keys())
+        ks.sort(reverse=True)
+        first = True
+        for dgr in ks:
+            if self.degrees[dgr] != 0 and len(ks) != 1:
+                if not first:
+                    s = s + " + "
+                else:
+                    first = False
+                s = s + str(self.degrees[dgr]) + " * x^" + str(dgr)
+        if s == "":
+            s = "0 * x^0"
         s = s + " = 0"
-        return s
+        return "Degree: " + str(self.degree) + "\n" + s
+
+
+def solution_is_all(degrees: dict):
+    ks = degrees.keys()
+    return (2 in ks and degrees[2] == 0 or 2 not in ks) and (1 in ks and degrees[1] == 0 or 1 not in ks) and (0 in ks and degrees[0] == 0 or 0 not in ks)
+
+
+def max_degree(degrees: dict):
+    max_degr = 0
+    for key in degrees.keys():
+        if degrees[key] != 0 and key > max_degr:
+            max_degr = key
+    return max_degr
 
 
 def expand_digit(equation, start):
-    end = start
+    end = start + 1 if equation[start] == '-' else start
     length = len(equation)
     while end < length and (equation[end].isdigit() or equation[end] == '.'):
         end += 1
-    return equation[start:end], end-start
+    return equation[start:end], (end - start - 1)
 
 
 def isoper(char):
@@ -106,40 +123,73 @@ def isoper(char):
 
 
 def isnum(str_num):
-    if not str_num[0].isdigit():
+    if not (str_num[0].isdigit() or (len(str_num) > 1 and str_num[0] == '-' and str_num[1].isdigit())):
         return False
-    for x in str_num:
-        if not x.isdigit() and x != '.':
+    i = 1 if str_num[0] == '-' else 0
+    while i < len(str_num):
+        if not str_num[i].isdigit() and str_num[i] != '.':
             return False
+        i = i + 1
     return True
 
+
+def invert_num(num_str):
+    if '.' in num_str:
+        dig = float(num_str) * -1
+    else:
+        dig = int(num_str) * -1
+    return str(dig)
 
 
 def update_tokens(tokens):
     updated_tokens = list()
     is_after_equal = False
-    for i in range(len(tokens)):
-        if tokens[i] == '*':
-            mult = tokens[i - 1] + '*' + tokens[i + 1]
-            updated_tokens.append(mult)
+    i = 0
+    while i < len(tokens):
+        if isnum(tokens[i]):
+            if is_after_equal:
+                tokens[i] = invert_num(tokens[i])
+            if i + 1 < len(tokens) and tokens[i + 1] != '*' or i + 1 >= len(tokens):
+                updated_tokens.append(tokens[i] + '*x^0')
+                i = i + 1
+            elif i + 2 < len(tokens) and tokens[i + 1] == '*' and tokens[i + 2] == 'x':
+                if i + 4 < len(tokens) and tokens[i + 3] == '^' and isnum(tokens[i + 4]):
+                    updated_tokens.append(tokens[i]+tokens[i+1]+tokens[i+2]+tokens[i+3]+tokens[i+4])
+                    i = i + 5
+                elif i + 3 < len(tokens) and tokens[i + 3] != '^':
+                    updated_tokens.append(tokens[i] + tokens[i + 1] + 'x^1')
+                    i = i + 3
+                else:
+                    raise EquationError("tokenizing error1 '" + tokens[i] + "' " + str(updated_tokens))
+            else:
+                raise EquationError("tokenizing error2 '" + tokens[i] + "' " + str(updated_tokens))
+        elif tokens[i] == 'x':
+            prefix = '-1*' if is_after_equal else '1*'
+            if i + 2 < len(tokens) and tokens[i + 1] == '^' and isnum(tokens[i + 2]):
+                updated_tokens.append(prefix + tokens[i] + tokens[i + 1] + tokens[i + 2])
+                i = i + 3
+            elif i + 1 >= len(tokens) or tokens[i + 1] != '^':
+                updated_tokens.append(prefix + 'x^1')
+                i = i + 1
+            else:
+                raise EquationError("tokenizing error3 '" + tokens[i] + "' " + str(updated_tokens))
         elif tokens[i] == '=':
             is_after_equal = True
-            if isnum(tokens[i + 1]):
-                if '.' in tokens[i + 1]:
-                    dig = float(tokens[i + 1]) * -1
-                else:
-                    dig = int(tokens[i + 1]) * -1
-                tokens[i + 1] = str(dig)
-        elif tokens[i] == '+' and is_after_equal:
-            tokens[i+1] = '-' + tokens[i + 1]
-        elif tokens[i] == '-' and not is_after_equal:
-            tokens[i + 1] = '-' + tokens[i + 1]
-        elif tokens[i] == '^':
-            last = updated_tokens.pop()
-            last = last + '^' + tokens[i+1]
-            updated_tokens.append(last)
-    return updated_tokens
+            if i + 1 >= len(tokens):
+                raise EquationError("no right side")
+            i = i + 1
+        elif tokens[i] == '+':
+            if is_after_equal:
+                tokens[i + 1] = '-' + tokens[i + 1]
+            i = i + 1
+        elif tokens[i] == '-':
+            if not is_after_equal:
+                tokens[i + 1] = '-' + tokens[i + 1]
+            i = i + 1
+        else:
+            raise EquationError("tokenizing error4 '" + tokens[i] + "' " + str(updated_tokens))
 
+    return updated_tokens
 
 
 def tokenize(equation):
@@ -158,33 +208,25 @@ def tokenize(equation):
                 tokens.append('x')
             elif equation[i] == '=':
                 tokens.append('=')
-            else:
-                pass  # error
+            elif not equation[i].isspace():
+                raise EquationError("unexpected symbol '%s'" % equation[i])
     print("TOKENS: ", tokens)
     tokens = update_tokens(tokens)
     print("UPDATED TOKENS: ", tokens)
     return tokens
-    # tokens_plus = re.split('\+|-|=', equation)
-    # tokens_plus_stripped = list()
-    # for token in tokens_plus:
-    #     tokens_plus_stripped.append(token.strip())
-    #
-    # tokens_plus = tokens_plus_stripped
-    # print(tokens_plus)
 
 
 def solve_equation():
     equation = argv[1]
     print(equation)
-    if '=' not in equation:
-        raise ValueError
-    equation.strip().lower()
+    if equation.count('=') != 1:
+        raise EquationError("Equation false")
+    equation = equation.strip().lower()
     tokens = tokenize(equation)
     eq = Equation(tokens)
     print(eq)
     eq.solve()
-    for root in eq.answer:
-        print(root)
+    print(eq.answer)
 
 
 if __name__ == '__main__':
