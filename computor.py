@@ -34,7 +34,7 @@ class Equation:
         self.is_complex = False
         self.answer = list()
         self.fractions_answer = list()
-        self.degrees = {0:0, 1:0, 2:0}
+        self.degrees = {0: 0, 1: 0, 2: 0}
         self.extract_x(tokens)
 
     def extract_x(self, equation: list):
@@ -58,12 +58,15 @@ class Equation:
             raise EquationError("Solution is all numbers")
         elif self.degree > 2:
             raise EquationError("Degree higher than 2")
+        elif min(self.degrees.keys()) < 0:
+            raise EquationError("Degree less than 0")
         elif self.degree == 2:
             q2 = self.degrees[2]
             q1 = self.degrees[1]
             q0 = self.degrees[0]
             self.discriminant = q1 * q1 - 4 * q2 * q0
             if self.discriminant < 0:
+                print("Discriminant is negative, the two complex solutions are:")
                 self.is_complex = True
                 self.num_roots = 2
                 sqrt_discr = math.sqrt(-self.discriminant)
@@ -76,7 +79,7 @@ class Equation:
                 else:
                     if type(sqrt_discr) is int:
                         nd = nod(sqrt_discr, 2 * q2)
-                        root1_i_str = '%s/%s * i' % (int(sqrt_discr/nd), int((2 * q2)/nd))
+                        root1_i_str = '%s/%s * i' % (int(sqrt_discr / nd), int((2 * q2) / nd))
                     else:
                         root1_i_str = 'sqrt(%s)/%s * i' % (-self.discriminant, 2 * q2)
                 root2_i = -root1_i
@@ -86,7 +89,7 @@ class Equation:
                 else:
                     if type(sqrt_discr) is int:
                         nd = nod(sqrt_discr, 2 * q2)
-                        root2_i_str = '-%s/%s * i' % (int(sqrt_discr/nd), int((2 * q2)/nd))
+                        root2_i_str = '-%s/%s * i' % (int(sqrt_discr / nd), int((2 * q2) / nd))
                     else:
                         root2_i_str = '-sqrt(%s)/%s * i' % (-self.discriminant, 2 * q2)
                 root_r = -q1 / (2 * q2)
@@ -95,8 +98,8 @@ class Equation:
                     root_r_str = str(root_r)
                 else:
                     if type(q1) is int and type(q2) is int:
-                        nd = nod(-q1, 2*q2)
-                        root_r_str = '%s/%s' % (int(-q1/nd), int((2 * q2)/nd))
+                        nd = nod(-q1, 2 * q2)
+                        root_r_str = '%s/%s' % (int(-q1 / nd), int((2 * q2) / nd))
                     else:
                         root_r_str = '%s/%s' % (-q1, 2 * q2)
                 self.answer.append(complex(root_r, root2_i))
@@ -104,16 +107,18 @@ class Equation:
                 self.fractions_answer.append(root_r_str + ' + ' + root1_i_str)
                 self.fractions_answer.append(root_r_str + ' + ' + root2_i_str)
             elif self.discriminant == 0:
+                print("Discriminant is equal to zero, the solution is:")
                 self.num_roots = 1
                 root = -q1 / (2 * q2)
                 if -q1 % (2 * q2) == 0:
                     root = int(root)
                     root_str = str(root)
                 else:
-                    root_str = str(-q1) + '/' + str(2*q2)
+                    root_str = str(-q1) + '/' + str(2 * q2)
                 self.answer.append(root)
                 self.fractions_answer.append(root_str)
             else:
+                print("Discriminant is strictly positive, the two solutions are:")
                 self.num_roots = 2
                 sqrt_discr = math.sqrt(self.discriminant)
                 if sqrt_discr == int(sqrt_discr):
@@ -127,7 +132,7 @@ class Equation:
                     if type(sqrt_discr) is int:
                         if type(q1) is int and type(q2) is int:
                             nd = nod(-q1 + sqrt_discr, 2 * q2)
-                            root1_str = '%s/%s' % (int((-q1 + sqrt_discr)/nd), int((2 * q2)/nd))
+                            root1_str = '%s/%s' % (int((-q1 + sqrt_discr) / nd), int((2 * q2) / nd))
                         else:
                             root1_str = '%s/%s' % ((-q1 + sqrt_discr), (2 * q2))
                     else:
@@ -149,6 +154,7 @@ class Equation:
                 self.fractions_answer.append(root1_str)
                 self.fractions_answer.append(root2_str)
         elif self.degree == 1:
+            print("The solution is:")
             q1 = self.degrees[1]
             q0 = self.degrees[0]
             self.num_roots = 1
@@ -180,12 +186,13 @@ class Equation:
         if s == "":
             s = "0 * x^0"
         s = s + " = 0"
-        return "Degree: " + str(self.degree) + "\n" + s
+        return "Reduced form: %s\nPolynomial degree: %d" % (s, self.degree)
 
 
 def solution_is_all(degrees: dict):
     ks = degrees.keys()
-    return (2 in ks and degrees[2] == 0 or 2 not in ks) and (1 in ks and degrees[1] == 0 or 1 not in ks) and (0 in ks and degrees[0] == 0 or 0 not in ks)
+    return (2 in ks and degrees[2] == 0 or 2 not in ks) and (1 in ks and degrees[1] == 0 or 1 not in ks) and (
+            0 in ks and degrees[0] == 0 or 0 not in ks)
 
 
 def max_degree(degrees: dict):
@@ -205,7 +212,7 @@ def expand_digit(equation, start):
 
 
 def isoper(char):
-    return char == '+' or char == '-' or char == '*' or char == '^'
+    return char == '+' or char == '-' or char == '*' or char == '^' or char == '='
 
 
 def isnum(str_num):
@@ -231,18 +238,22 @@ def update_tokens(tokens):
     updated_tokens = list()
     is_after_equal = False
     i = 0
+    flag = False  # чередование оператора и переменной
     while i < len(tokens):
         if isnum(tokens[i]):
+            if flag and float(tokens[i]) > 0:
+                raise EquationError("flag")
+            flag = True
             if is_after_equal:
                 tokens[i] = invert_num(tokens[i])
-            if i + 1 < len(tokens) and tokens[i + 1] != '*' or i + 1 >= len(tokens):
+            if i + 1 < len(tokens) and tokens[i + 1] in '-+=' or i + 1 >= len(tokens):
                 updated_tokens.append(tokens[i] + '*x^0')
                 i = i + 1
             elif i + 2 < len(tokens) and tokens[i + 1] == '*' and tokens[i + 2] == 'x':
                 if i + 4 < len(tokens) and tokens[i + 3] == '^' and isnum(tokens[i + 4]):
-                    updated_tokens.append(tokens[i]+tokens[i+1]+tokens[i+2]+tokens[i+3]+tokens[i+4])
+                    updated_tokens.append(tokens[i] + tokens[i + 1] + tokens[i + 2] + tokens[i + 3] + tokens[i + 4])
                     i = i + 5
-                elif i + 3 < len(tokens) and tokens[i + 3] != '^' or i + 3 >= len(tokens):
+                elif i + 3 < len(tokens) and tokens[i + 3] != '^'or i + 3 >= len(tokens):
                     updated_tokens.append(tokens[i] + tokens[i + 1] + 'x^1')
                     i = i + 3
                 else:
@@ -250,31 +261,41 @@ def update_tokens(tokens):
             else:
                 raise EquationError("tokenizing error2 '" + tokens[i] + "' " + str(updated_tokens))
         elif tokens[i] == 'x':
+            if flag:
+                raise EquationError("flag")
+            flag = True
             prefix = '-1*' if is_after_equal else '1*'
             if i + 2 < len(tokens) and tokens[i + 1] == '^' and isnum(tokens[i + 2]):
                 updated_tokens.append(prefix + tokens[i] + tokens[i + 1] + tokens[i + 2])
                 i = i + 3
-            elif i + 1 >= len(tokens) or tokens[i + 1] != '^':
+            elif i + 1 >= len(tokens) or tokens[i + 1] != '^' and isoper(tokens[i + 1]):
                 updated_tokens.append(prefix + 'x^1')
+                i = i + 1
+            elif isnum(tokens[i + 1]) and float(tokens[i + 1]) < 0:
+                updated_tokens.append(prefix + 'x^1')
+                tokens.insert(i + 1, '+')
                 i = i + 1
             else:
                 raise EquationError("tokenizing error3 '" + tokens[i] + "' " + str(updated_tokens))
         elif tokens[i] == '=':
+            flag = False
             is_after_equal = True
             if i + 1 >= len(tokens):
                 raise EquationError("no right side")
             i = i + 1
         elif tokens[i] == '-':
+            flag = False
             if isnum(tokens[i + 1]):
                 tokens[i + 1] = invert_num(tokens[i + 1])
             elif tokens[i + 1] == 'x':
-                tokens.insert(i+1, '-1')
-                tokens.insert(i+2, '*')
+                tokens.insert(i + 1, '-1')
+                tokens.insert(i + 2, '*')
             i = i + 1
         elif isoper(tokens[i]):
+            flag = False
+            if isoper(tokens[i + 1]):
+                raise EquationError("tokenizing error4 '" + tokens[i] + "' " + str(updated_tokens))
             i = i + 1
-        elif isoper(tokens[i]) and isoper(tokens[i + 1]):
-            raise EquationError("tokenizing error4 '" + tokens[i] + "' " + str(updated_tokens))
         else:
             raise EquationError("tokenizing error5 '" + tokens[i] + "' " + str(updated_tokens))
 
@@ -285,12 +306,12 @@ def tokenize(equation):
     tokens = list()
     i = 0
     while i < len(equation):
-        if isnum(equation[i]) or (equation[i] == '-' and isnum(equation[i+1])):
+        if isnum(equation[i]) or (equation[i] == '-' and isnum(equation[i + 1])):
             digit, end = expand_digit(equation, i)
             i = i + end
             tokens.append(digit)
         elif isoper(equation[i]):
-            tokens.append(equation[i:i+1])
+            tokens.append(equation[i:i + 1])
         elif equation[i] == 'x':
             tokens.append('x')
         elif equation[i] == '=':
@@ -298,32 +319,33 @@ def tokenize(equation):
         elif not equation[i].isspace():
             raise EquationError("unexpected symbol '%s'" % equation[i])
         i = i + 1
-    print("TOKENS: ", tokens)
+    # print("TOKENS: ", tokens)
     tokens = update_tokens(tokens)
-    print("UPDATED TOKENS: ", tokens)
+    # print("UPDATED TOKENS: ", tokens)
     return tokens
 
 
-def solve_equation():
-    equation = input() if len(argv) == 1 else argv[1]
-    if equation.count('=') != 1:
-        raise EquationError("Equation false")
-    equation = equation.replace(" ", "").lower()
-    print(equation)
-    # try:
-    tokens = tokenize(equation)
-    if len(tokens) == 0:
-        raise EquationError("error")
-    eq = Equation(tokens)
-    print(eq)
-    eq.solve()
-    print('-----------')
-    for x in eq.answer:
-        print('x = ' + str(x))
-    print('-----------')
-    for x in eq.fractions_answer:
-        print('x = ' + x)
+def solve_equation(equation_input):
+    if equation_input.count('=') != 1:
+        print("There is no single '=' sign")
+        return
+    equation_input = equation_input.replace(" ", "").lower()
+    try:
+        tokens = tokenize(equation_input)
+        if len(tokens) == 0:
+            raise EquationError("error")
+        eq = Equation(tokens)
+        print(eq)
+        eq.solve()
+        for x in eq.answer:
+            print(x)
+        print('Solution with irrational fractions:')
+        for x in eq.fractions_answer:
+            print(x)
+    except EquationError as e:
+        print(e.error)
 
 
 if __name__ == '__main__':
-    solve_equation()
+    equation = input() if len(argv) == 1 else argv[1]
+    solve_equation(equation)
