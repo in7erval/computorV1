@@ -246,7 +246,7 @@ def update_tokens(tokens):
             flag = True
             if is_after_equal:
                 tokens[i] = invert_num(tokens[i])
-            if i + 1 < len(tokens) and tokens[i + 1] in '-+=' or i + 1 >= len(tokens):
+            if i + 1 < len(tokens) and (tokens[i + 1] in '-+=' or (isnum(tokens[i + 1]) and float(tokens[i + 1]) < 0)) or i + 1 >= len(tokens):
                 updated_tokens.append(tokens[i] + '*x^0')
                 i = i + 1
             elif i + 2 < len(tokens) and tokens[i + 1] == '*' and tokens[i + 2] == 'x':
