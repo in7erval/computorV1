@@ -26,7 +26,7 @@ Solution with irrational fractions:
         self.assert_stdout("3 * x^2 + 2 * x^1 + 1 * x^0 = 0 * x ^ 0", """Reduced form: 3 * x^2 + 2 * x^1 + 1 * x^0 = 0
 Polynomial degree: 2
 Discriminant is negative, the two complex solutions are:
-(-0.3333333333333333-0.471404520791
+(-0.3333333333333333-0.47140452079103173j)
 (-0.3333333333333333+0.47140452079103173j)
 Solution with irrational fractions:
 -1/3 + sqrt(8)/6 * i
